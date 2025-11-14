@@ -20,7 +20,7 @@ atlas-research-notebooks/
 │   ├── 001_crypto_correlation.py
 │   ├── 002_implied_volatility_surface_analysis.py
 │   └── 003_volume_profile_market_regime.py
-├── bioinformatics/         # Bioinformatics research and analysis
+├── economics/              # Economics Research
 ├── machine-learning/       # ML models and experiments
 ├── CONTRIBUTING.md         # Contribution guidelines
 ├── LICENSE                 # MIT License
