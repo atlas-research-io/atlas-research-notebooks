@@ -1,0 +1,13 @@
+# Jupytext configuration for atlas-research-notebooks
+# See: https://jupytext.readthedocs.io/en/latest/config.html
+
+# Default format for notebooks
+default_jupytext_formats = "py:percent"
+
+# Preserve metadata
+notebook_metadata_filter = "all"
+cell_metadata_filter = "all"
+
+# Note: Auto-pairing is disabled by default to prevent accidental .ipynb commits
+# Uncomment the line below to enable automatic .py/.ipynb pairing:
+# formats = "ipynb,py:percent"

@@ -42,6 +42,34 @@ cd atlas-research-notebooks
 
 3. Open any notebook and run the cells - dependencies will be installed automatically via pip install cells.
 
+## Working with Notebooks
+
+This repository uses [Jupytext](https://jupytext.readthedocs.io/) to manage notebooks as Python scripts (`.py` files) instead of `.ipynb` files. This approach provides better version control and easier code review.
+
+### Exporting from Atlas Research
+
+**Recommended:** Create and edit notebooks in [atlas-research.io](https://atlas-research.io), then use the **Jupytext export button** in the top toolbar to export as `.py` files.
+
+### Converting Locally (Alternative)
+
+For local development, you can convert between formats:
+
+```bash
+# Install jupytext (or use requirements.txt)
+pip install jupytext
+
+# Convert a single .py file to .ipynb
+jupytext --to notebook crypto/001_crypto_correlation.py
+
+# Convert all .py files to .ipynb
+jupytext --to notebook **/*.py
+
+# Sync changes from .ipynb back to .py
+jupytext --sync crypto/001_crypto_correlation.ipynb
+```
+
+**Note:** The repository only tracks `.py` files. Generated `.ipynb` files are ignored by git and can be created locally as needed.
+
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to:

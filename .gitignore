@@ -22,6 +22,7 @@ wheels/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb  # Only track .py versions via Jupytext
 
 # Environment
 .env

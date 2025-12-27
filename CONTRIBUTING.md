@@ -32,13 +32,78 @@ We welcome several types of contributions:
    - Install Jupyter: `pip install jupyter`
    - Dependencies are managed per notebook via pip install cells
 
+### Working with Jupytext
+
+This repository uses **Jupytext** to version control notebooks as Python script files (`.py`) with special formatting. This provides cleaner diffs and easier code review.
+
+#### Why Jupytext?
+- Better version control (`.py` files vs binary `.ipynb` files)
+- Cleaner git diffs showing actual code changes
+- Easier code review in pull requests
+- No merge conflicts from notebook metadata
+
+#### Exporting from Atlas Research Platform (Recommended)
+
+**Primary Workflow:**
+
+1. **Create or edit your notebook** in the [atlas-research.io](https://atlas-research.io) platform
+2. **Click the Jupytext export button** in the top toolbar of the notebook editor
+3. **Save the exported `.py` file** to the appropriate directory in this repository
+4. **Commit only the `.py` file** to git
+
+This is the recommended workflow as it ensures consistent formatting and leverages the platform's built-in export functionality.
+
+#### Alternative: Local Conversion (Command-Line)
+
+**For contributors working locally:**
+
+1. **Converting .py to .ipynb for editing:**
+   ```bash
+   # Convert a single file
+   jupytext --to notebook crypto/001_crypto_correlation.py
+
+   # This creates crypto/001_crypto_correlation.ipynb locally
+   ```
+
+2. **Syncing changes back to .py:**
+   ```bash
+   # After editing the .ipynb file, sync back to .py
+   jupytext --sync crypto/001_crypto_correlation.ipynb
+
+   # Only commit the .py file, not the .ipynb
+   ```
+
+3. **Creating a new notebook:**
+   ```bash
+   # Create your notebook in Jupyter as usual (.ipynb)
+   # Then convert it to .py format for version control
+   jupytext --to py:percent your_notebook.ipynb
+
+   # Commit only the .py file
+   ```
+
+#### Format Details
+- All notebooks use the **percent format** (`# %%` cell markers)
+- Markdown cells start with `# %% [markdown]`
+- Code cells start with `# %%`
+- The format is compatible with VS Code, PyCharm, and Spyder
+
+#### Important Notes
+- **Never commit `.ipynb` files** - they are gitignored
+- Always commit the `.py` version of your notebook
+- The `.ipynb` files are temporary and for local development only
+- When using command-line tools, run `jupytext --sync` before committing to ensure `.py` is up-to-date
+
+#### VS Code Integration
+If you use VS Code, you can open `.py` files directly and they will render as notebooks with the Jupyter extension. The `# %%` markers create interactive cells without needing to convert to `.ipynb`.
+
 ## Contribution Guidelines
 
 ### Notebook Standards
 
 #### Naming Convention
-- Use descriptive, numbered names: `001_descriptive_name.ipynb`
-- Include corresponding Python script: `001_descriptive_name.py`
+- Use descriptive, numbered names: `001_descriptive_name.py`
+- Create as Jupytext Python script: `001_descriptive_name.py` (percent format)
 - Place in appropriate domain folder: `crypto/`, `finance/`, `machine-learning/`
 
 #### Notebook Structure
