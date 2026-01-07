@@ -36,7 +36,7 @@ atlas-research-notebooks/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-org/atlas-research-notebooks.git
+git clone https://github.com/atlas-research-io/atlas-research-notebooks.git
 cd atlas-research-notebooks
 ```
 
