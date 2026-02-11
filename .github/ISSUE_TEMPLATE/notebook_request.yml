@@ -1,0 +1,38 @@
+name: Notebook Request
+description: Suggest a new research notebook topic
+labels: ["notebook-request"]
+body:
+  - type: input
+    id: topic
+    attributes:
+      label: Topic Area
+      description: Which category does this belong to?
+      placeholder: "e.g., crypto, economics, machine-learning, geography, programming"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Notebook Description
+      description: What should this notebook cover? What analysis, visualization, or research would it demonstrate?
+    validations:
+      required: true
+
+  - type: textarea
+    id: data_sources
+    attributes:
+      label: Suggested Data Sources
+      description: What APIs, datasets, or data sources would this notebook use?
+      placeholder: "e.g., FRED API, CCXT/Binance, World Bank API, Yahoo Finance"
+
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Estimated Difficulty
+      options:
+        - Beginner
+        - Intermediate
+        - Advanced
+    validations:
+      required: true

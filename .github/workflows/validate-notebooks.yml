@@ -1,0 +1,51 @@
+name: Validate Notebooks
+
+on:
+  push:
+    branches: [main]
+    paths: ['**/*.py', '!.venv/**']
+  pull_request:
+    branches: [main]
+    paths: ['**/*.py', '!.venv/**']
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install validation tools
+        run: pip install jupytext ruff
+
+      - name: Validate Jupytext format
+        run: |
+          errors=0
+          for f in $(find . -name "*.py" -not -path "./.venv/*" -not -path "./.github/*" -not -path "./_templates/*"); do
+            echo "Validating: $f"
+            if ! jupytext --to notebook --output /dev/null "$f" 2>&1; then
+              echo "FAILED: $f"
+              errors=$((errors + 1))
+            fi
+          done
+          if [ $errors -gt 0 ]; then
+            echo "$errors file(s) failed Jupytext validation"
+            exit 1
+          fi
+
+      - name: Lint with Ruff (non-blocking)
+        run: ruff check --config ruff.toml . || true
+        continue-on-error: true
+
+      - name: Check for hardcoded secrets
+        run: |
+          # Check for potential API keys (long hex strings that aren't common hashes)
+          if grep -rn --include="*.py" -E "api_key\s*=\s*['\"][a-f0-9]{20,}['\"]" --exclude-dir=.venv .; then
+            echo "WARNING: Possible hardcoded API keys detected. Use environment variables instead."
+            echo "See .env.example for the recommended pattern."
+            exit 1
+          fi

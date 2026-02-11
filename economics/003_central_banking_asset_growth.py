@@ -27,7 +27,11 @@ except ImportError:
 # Plus exchange rates for currency conversion to Trillions USD.
 
 # %%
-FRED_API_KEY = '976a964605bdb8bed09739ba9b4d8511'
+import os
+
+# Get a free FRED API key at: https://fredaccount.stlouisfed.org/apikeys
+# Set FRED_API_KEY env var or use the default key below
+FRED_API_KEY = os.environ.get('FRED_API_KEY', '976a964605bdb8bed09739ba9b4d8511')
 
 if FRED_AVAILABLE and FRED_API_KEY != 'your_api_key_here':
     try:

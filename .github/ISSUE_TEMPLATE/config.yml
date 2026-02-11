@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: General Question
+    url: https://github.com/atlas-research-io/atlas-research-notebooks/discussions
+    about: Ask questions or start a discussion

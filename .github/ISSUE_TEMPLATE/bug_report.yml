@@ -1,0 +1,39 @@
+name: Bug Report
+description: Report a notebook that fails to run or has errors
+labels: ["bug"]
+body:
+  - type: input
+    id: notebook
+    attributes:
+      label: Notebook
+      description: Which notebook has the issue?
+      placeholder: "e.g., crypto/001_crypto_correlation.py"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the error or unexpected behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error Message
+      description: Paste the full error traceback if available.
+      render: python
+
+  - type: input
+    id: python_version
+    attributes:
+      label: Python Version
+      placeholder: "e.g., 3.11.5"
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: "e.g., Windows 11, macOS 14, Ubuntu 22.04"

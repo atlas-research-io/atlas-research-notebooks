@@ -19,8 +19,11 @@ warnings.filterwarnings('ignore')
 plt.style.use('dark_background')
 sns.set_palette("husl")
 
-# Your api key here: https://fredaccount.stlouisfed.org/apikeys
-fred = Fred(api_key='your_api_key_here')
+import os
+
+# Get a free FRED API key at: https://fredaccount.stlouisfed.org/apikeys
+# Set FRED_API_KEY env var or replace the default below
+fred = Fred(api_key=os.environ.get('FRED_API_KEY', 'your_api_key_here'))
 
 # %%
 # Fetch key economic indicators from FRED

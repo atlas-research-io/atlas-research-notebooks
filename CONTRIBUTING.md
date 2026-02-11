@@ -1,6 +1,6 @@
 # Contributing to Atlas Research Notebooks
 
- This collection showcases the capabilities of the [atlas-research.io](https://atlas-research.io) platform through practical examples and research implementations.
+This collection showcases the capabilities of the [atlas-research.io](https://atlas-research.io) platform through practical examples and research implementations.
 
 ## How to Contribute
 
@@ -10,27 +10,42 @@ We welcome several types of contributions:
 
 1. **New Research Notebooks**: Original analysis, tutorials, or academic paper reproductions
 2. **Improvements to Existing Code**: Bug fixes, optimizations, or enhanced documentation
-3. **New Research Areas**: Adding examples in new domains (finance, biology, ML, etc.)
+3. **New Research Areas**: Adding examples in new domains (crypto, economics, geography, geopolitics, machine learning, backtesting, political data, and more)
 4. **Documentation**: Improving README files, adding comments, or creating tutorials
 5. **Platform Feature Demonstrations**: Showcasing specific atlas-research.io capabilities
 
 ### Getting Started
 
-1. **Clone the Repository**
+1. **Fork and clone the repository**
    ```bash
-   git clone https://github.com/your-username/atlas-research-notebooks.git
+   git clone https://github.com/<your-username>/atlas-research-notebooks.git
    cd atlas-research-notebooks
    ```
 
-2. **Create a Feature Branch**
+2. **Create a feature branch**
    ```bash
    git checkout -b feature/your-contribution-name
    ```
 
-3. **Set Up Development Environment**
-   - Ensure you have Python 3.11+ installed
-   - Install Jupyter: `pip install jupyter`
-   - Dependencies are managed per notebook via pip install cells
+3. **Set up development environment**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # Linux/Mac
+   .venv\Scripts\activate     # Windows
+   pip install -r requirements.txt
+   ```
+
+4. **Set up API keys (if needed)**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys
+   ```
+
+5. **Install pre-commit hooks (recommended)**
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   ```
 
 ### Working with Jupytext
 
@@ -102,9 +117,18 @@ If you use VS Code, you can open `.py` files directly and they will render as no
 ### Notebook Standards
 
 #### Naming Convention
-- Use descriptive, numbered names: `001_descriptive_name.py`
-- Create as Jupytext Python script: `001_descriptive_name.py` (percent format)
-- Place in appropriate domain folder: `crypto/`, `finance/`, `machine-learning/`
+- Use descriptive, numbered names: `NNN_descriptive_name.py`
+- Create as Jupytext Python script: `NNN_descriptive_name.py` (percent format)
+- Place in appropriate domain folder: `crypto/`, `economics/`, `geography/`, `machine-learning/`, `programming/`
+- See `_templates/notebook_template.py` for a starter template
+
+#### Visual Style
+All notebooks in this repository use **dark theme** styling. This is a repository standard:
+```python
+plt.style.use('dark_background')
+# For custom backgrounds, use dark colors like:
+# fig.patch.set_facecolor('#1E1E1E')
+```
 
 #### Notebook Structure
 Each notebook should include:
@@ -123,7 +147,6 @@ Each notebook should include:
    import pandas as pd
    import numpy as np
    import matplotlib.pyplot as plt
-   # Set visualization theme if applicable
    plt.style.use('dark_background')
    ```
 
@@ -147,7 +170,7 @@ Each notebook should include:
 #### Data and APIs
 
 - **External Data**: Prefer public APIs and datasets when possible
-- **API Keys**: Never commit API keys or secrets (use environment variables)
+- **API Keys**: Never hardcode API keys or secrets -- use `os.environ.get()` (see `.env.example`)
 - **Data Size**: Keep example datasets reasonably sized for quick execution
 
 ### Submission Process
@@ -163,45 +186,14 @@ Each notebook should include:
 
 3. **Create a Pull Request**
    - Use a descriptive title
-   - Include detailed description of your contribution
+   - Fill out the PR template
    - Reference any related issues
-
-### Pull Request Template
-
-```markdown
-## Description
-Brief description of the contribution and its purpose.
-
-## Type of Contribution
-- [ ] New notebook/analysis
-- [ ] Bug fix
-- [ ] Documentation improvement
-- [ ] Feature enhancement
-
-## Research Area
-- [ ] Cryptocurrency/DeFi
-- [ ] Bioinformatics  
-- [ ] Machine Learning
-- [ ] Other: ___________
-
-## Testing
-- [ ] Notebook runs without errors
-- [ ] All dependencies properly specified
-- [ ] Visualizations render correctly
-- [ ] Documentation updated
-
-## Atlas Platform Features Demonstrated
-- [ ] Data integration
-- [ ] Interactive visualizations
-- [ ] API connectivity
-- [ ] Other: ___________
-```
 
 ## Code Review Process
 
-1. **Automated Checks**: Basic syntax and formatting validation
-3. **Maintainer Review**: Final review by repository maintainers
-4. **Testing**: Verification that notebooks execute successfully
+1. **Automated Checks**: CI validates Jupytext format and scans for hardcoded secrets
+2. **Maintainer Review**: Final review by repository maintainers
+3. **Testing**: Verification that notebooks execute successfully
 
 ## Community Guidelines
 
@@ -209,6 +201,8 @@ Brief description of the contribution and its purpose.
 - Use inclusive language
 - Respect different research approaches and methodologies
 - Provide constructive feedback
+
+See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for full community standards.
 
 ### Academic Integrity
 - Properly cite sources and academic papers

@@ -1,0 +1,13 @@
+[lint]
+select = ["E", "W", "F"]
+ignore = [
+    "E501",  # Line too long (notebooks have different needs)
+    "E402",  # Module import not at top (notebooks install deps first)
+    "F401",  # Unused import (common in notebook exploration)
+    "E741",  # Ambiguous variable name (common in math/data science)
+]
+
+[lint.per-file-ignores]
+"_templates/*" = ["F811"]
+
+exclude = [".venv", "__pycache__"]
