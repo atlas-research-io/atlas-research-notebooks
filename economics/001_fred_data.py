@@ -4,7 +4,7 @@
 # This notebook fetches real-time economic data from the Federal Reserve Economic Data (FRED) API to create a coherent narrative about the current state of the U.S. economy. We'll explore relationships between key economic indicators including monetary policy, inflation, labor markets, and housing.
 
 # %%
-!pip install pandas numpy matplotlib seaborn fredapi plotly requests datetime
+# Install required packages using: pip install pandas numpy matplotlib seaborn fredapi plotly requests datetime
 
 # %%
 import pandas as pd
