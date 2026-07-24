@@ -24,10 +24,14 @@ jobs:
 
       - name: Validate Jupytext format
         run: |
+          # Note: jupytext rejects '--output /dev/null' (it requires a .ipynb
+          # extension), so round-trip into a scratch file instead.
+          tmpdir=$(mktemp -d)
+          trap 'rm -rf "$tmpdir"' EXIT
           errors=0
           for f in $(find . -name "*.py" -not -path "./.venv/*" -not -path "./.github/*" -not -path "./_templates/*"); do
             echo "Validating: $f"
-            if ! jupytext --to notebook --output /dev/null "$f" 2>&1; then
+            if ! jupytext --to notebook --output "$tmpdir/out.ipynb" "$f" 2>&1; then
               echo "FAILED: $f"
               errors=$((errors + 1))
             fi
