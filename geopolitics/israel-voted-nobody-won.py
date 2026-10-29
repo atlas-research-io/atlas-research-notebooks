@@ -272,10 +272,10 @@ def _(ATLAS, FPS, YEAR_EVENTS, canvas, chrome, ease, np, odds_year, pd, save_sce
         tb.set_text(f"Netanyahu {b[n-1]*100:.0f}%")
         te.set_position((n + 2, e[n - 1] + (gap if e[n - 1] > b[n - 1] else -gap)))
         te.set_text(f"Eisenkot {e[n-1]*100:.0f}%")
-        for (i, lab), ln, t in zip(ev1, ev1_lines, ev1_texts):
-            if i < n:
-                ln.set_alpha(1)
-                t.set_text(lab)
+        for (i1, lab1), ln1, t1 in zip(ev1, ev1_lines, ev1_texts):
+            if i1 < n:
+                ln1.set_alpha(1)
+                t1.set_text(lab1)
         return [lb, le, tb, te] + ev1_lines + ev1_texts
 
     scene1_path = save_scene(fig1, scene1, draw1 + hold1)
@@ -336,17 +336,17 @@ def _(ATLAS, BLOC_COLOR, FPS, blocs, canvas, chrome, ease, np, save_scene, seats
     ax3.set_xticks([])
     ax3.set_yticks([])
     tr3 = ax3.get_yaxis_transform()
-    for yi, p, l in zip(y3, seats["party"], seats["leader"]):
-        ax3.text(-0.015, yi + 0.12, p, color=ATLAS["ink"], fontsize=13, fontweight="bold", ha="right", va="center", family=ATLAS["font"], transform=tr3)
-        ax3.text(-0.015, yi - 0.22, l, color=ATLAS["muted"], fontsize=9.5, ha="right", va="center", family=ATLAS["font"], transform=tr3)
-    vals3 = [ax3.text(0, yi, "", color=ATLAS["ink"], fontsize=13, fontweight="bold", va="center", family=ATLAS["font"]) for yi in y3]
+    for y3i, p3, l3 in zip(y3, seats["party"], seats["leader"]):
+        ax3.text(-0.015, y3i + 0.12, p3, color=ATLAS["ink"], fontsize=13, fontweight="bold", ha="right", va="center", family=ATLAS["font"], transform=tr3)
+        ax3.text(-0.015, y3i - 0.22, l3, color=ATLAS["muted"], fontsize=9.5, ha="right", va="center", family=ATLAS["font"], transform=tr3)
+    vals3 = [ax3.text(0, y3j, "", color=ATLAS["ink"], fontsize=13, fontweight="bold", va="center", family=ATLAS["font"]) for y3j in y3]
     legend3 = [
         (f"Netanyahu bloc {int(blocs['right'])}", ATLAS["hot"]),
         (f"Opposition {int(blocs['opp'])}", ATLAS["accent"]),
         (f"Arab parties {int(blocs['arab'])}", ATLAS["amber"]),
     ]
-    for k, (lab, c) in enumerate(legend3):
-        fig3.text(0.30 + k * 0.21, 0.795, "■ " + lab, color=c, fontsize=11, fontweight="bold", family=ATLAS["font"])
+    for k3, (lab3, c3) in enumerate(legend3):
+        fig3.text(0.30 + k3 * 0.21, 0.795, "■ " + lab3, color=c3, fontsize=11, fontweight="bold", family=ATLAS["font"])
     per_bar3 = int(FPS * 0.45)
     hold3 = int(FPS * 3)
 
@@ -371,7 +371,7 @@ def _(ATLAS, FPS, MOVES, canvas, chrome, ease, np, save_scene):
     v4 = [m[1] for m in MOVES]
     n4 = len(v4)
     y4 = np.arange(n4)[::-1]
-    colors4 = [ATLAS["hot"] if (v < 0 or "yield" in lab) else ATLAS["accent"] for lab, v in MOVES]
+    colors4 = [ATLAS["hot"] if (mv < 0 or "yield" in ml) else ATLAS["accent"] for ml, mv in MOVES]
     bars4 = ax4.barh(y4, [0] * n4, height=0.62, color=colors4)
     lo4, hi4 = min(v4 + [0]), max(v4 + [0])
     ax4.set_xlim(lo4 * 1.5 - 1, hi4 * 1.5 + 1)
@@ -380,9 +380,9 @@ def _(ATLAS, FPS, MOVES, canvas, chrome, ease, np, save_scene):
     ax4.set_yticks([])
     ax4.axvline(0, color=ATLAS["muted"], linewidth=0.8)
     tr4 = ax4.get_yaxis_transform()
-    for yi, lab in zip(y4, labels4):
-        ax4.text(-0.015, yi, lab, color=ATLAS["ink"], fontsize=14, fontweight="bold", ha="right", va="center", family=ATLAS["font"], transform=tr4)
-    texts4 = [ax4.text(0, yi, "", color=ATLAS["ink"], fontsize=14, fontweight="bold", va="center", family=ATLAS["font"]) for yi in y4]
+    for y4i, lab4 in zip(y4, labels4):
+        ax4.text(-0.015, y4i, lab4, color=ATLAS["ink"], fontsize=14, fontweight="bold", ha="right", va="center", family=ATLAS["font"], transform=tr4)
+    texts4 = [ax4.text(0, y4j, "", color=ATLAS["ink"], fontsize=14, fontweight="bold", va="center", family=ATLAS["font"]) for y4j in y4]
     per_bar4 = int(FPS * 0.6)
     hold4 = int(FPS * 3)
 
@@ -417,20 +417,20 @@ def _(ATLAS, FPS, canvas, chrome, ease, save_scene):
         ("5", "Hormuz is already closed 241 days. Brent is $111.\nA second round puts every number in this video back on the board."),
     ]
     rows5 = []
-    for k, (num, txt) in enumerate(STEPS):
-        y = 0.92 - k * 0.19
-        circ = ax5.text(0.02, y, num, color=ATLAS["bg"], fontsize=13, fontweight="bold", ha="center", va="center", family=ATLAS["font"], bbox=dict(boxstyle="circle,pad=0.35", fc=ATLAS["accent"], ec="none"), alpha=0)
-        body = ax5.text(0.07, y, txt, color=ATLAS["ink"], fontsize=13.5, va="center", family=ATLAS["font"], linespacing=1.3, alpha=0)
+    for k5, (num5, txt5) in enumerate(STEPS):
+        y5 = 0.92 - k5 * 0.19
+        circ = ax5.text(0.02, y5, num5, color=ATLAS["bg"], fontsize=13, fontweight="bold", ha="center", va="center", family=ATLAS["font"], bbox=dict(boxstyle="circle,pad=0.35", fc=ATLAS["accent"], ec="none"), alpha=0)
+        body = ax5.text(0.07, y5, txt5, color=ATLAS["ink"], fontsize=13.5, va="center", family=ATLAS["font"], linespacing=1.3, alpha=0)
         rows5.append((circ, body))
     per5 = int(FPS * 1.6)
     hold5 = int(FPS * 4)
 
     def scene5(frame):
-        for k, (c, b) in enumerate(rows5):
-            a = ease(min(1, max(0, (frame - k * per5) / (per5 * 0.5))))
-            c.set_alpha(a)
-            b.set_alpha(a)
-        return [t for r in rows5 for t in r]
+        for k5b, (c5, b5) in enumerate(rows5):
+            a5 = ease(min(1, max(0, (frame - k5b * per5) / (per5 * 0.5))))
+            c5.set_alpha(a5)
+            b5.set_alpha(a5)
+        return [t5 for r5 in rows5 for t5 in r5]
 
     scene5_path = save_scene(fig5, scene5, len(STEPS) * per5 + hold5)
     return (scene5_path,)
