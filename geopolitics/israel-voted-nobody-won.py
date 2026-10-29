@@ -8,6 +8,7 @@ app = marimo.App(width="medium")
 def _():
     import marimo as mo
     import io
+    import os
     import json
     import subprocess
     import tempfile
@@ -20,7 +21,7 @@ def _():
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.animation import FuncAnimation, FFMpegWriter
-    return FFMpegWriter, FuncAnimation, dt, io, json, mo, np, pd, plt, subprocess, tempfile, urllib, yf
+    return FFMpegWriter, FuncAnimation, dt, io, json, mo, np, os, pd, plt, subprocess, tempfile, urllib, yf
 
 
 @app.cell
@@ -92,7 +93,13 @@ def _(dt, json, pd, urllib, yf):
 
 
 @app.cell
-def _(FFMpegWriter, FuncAnimation, plt, subprocess, tempfile):
+def _(FFMpegWriter, FuncAnimation, np, os, plt, subprocess, tempfile, urllib):
+    from matplotlib import font_manager
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Circle, Ellipse
+    from fontTools.ttLib import TTFont
+    from fontTools.varLib import instancer
+
     ATLAS = {
         "bg": "#0f0f0f",
         "ink": "#f4f1ea",
@@ -102,26 +109,107 @@ def _(FFMpegWriter, FuncAnimation, plt, subprocess, tempfile):
         "amber": "#e0a24f",
         "blue": "#6b97e0",
         "violet": "#9385e3",
-        "font": "DejaVu Sans",
+        "font": "Atlas Sans",
+        "serif": "Atlas Serif",
+        "mono": "Atlas Mono",
     }
     BLOC_COLOR = {"right": ATLAS["hot"], "opp": ATLAS["accent"], "arab": ATLAS["amber"]}
     FPS = 24
 
+    FONT_DIR = os.path.join(tempfile.gettempdir(), "atlas-fonts")
+    os.makedirs(FONT_DIR, exist_ok=True)
+    FONT_SRC = [
+        ("Atlas Serif", "https://github.com/google/fonts/raw/main/ofl/sourceserif4/SourceSerif4%5Bopsz%2Cwght%5D.ttf", {"opsz": 24}),
+        ("Atlas Sans", "https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf", {"opsz": 14}),
+        ("Atlas Mono", "https://github.com/JetBrains/JetBrainsMono/raw/master/fonts/ttf/JetBrainsMono-Regular.ttf", 400),
+        ("Atlas Mono", "https://github.com/JetBrains/JetBrainsMono/raw/master/fonts/ttf/JetBrainsMono-Bold.ttf", 700),
+    ]
+
+    def _fetch(url):
+        path = os.path.join(FONT_DIR, url.rsplit("/", 1)[1].replace("%5B", "[").replace("%5D", "]").replace("%2C", ","))
+        if not os.path.exists(path):
+            req = urllib.request.Request(url, headers={"User-Agent": "atlas-research"})
+            with urllib.request.urlopen(req, timeout=60) as r, open(path, "wb") as f:
+                f.write(r.read())
+        return path
+
+    def _rename(font, family, weight):
+        style = "Bold" if weight >= 600 else "Regular"
+        for rec in font["name"].names:
+            if rec.nameID in (1, 16):
+                rec.string = family
+            elif rec.nameID in (2, 17):
+                rec.string = style
+            elif rec.nameID == 4:
+                rec.string = f"{family} {style}"
+            elif rec.nameID == 6:
+                rec.string = f"{family.replace(' ', '')}-{style}"
+        font["OS/2"].usWeightClass = weight
+        if weight >= 600:
+            font["OS/2"].fsSelection = (font["OS/2"].fsSelection | (1 << 5)) & ~(1 << 6)
+            font["head"].macStyle |= 1
+        else:
+            font["OS/2"].fsSelection = (font["OS/2"].fsSelection | (1 << 6)) & ~(1 << 5)
+            font["head"].macStyle &= ~1
+
+    def load_fonts():
+        for family, url, spec in FONT_SRC:
+            src = _fetch(url)
+            weights = (400, 700) if isinstance(spec, dict) else (spec,)
+            for weight in weights:
+                out = os.path.join(FONT_DIR, f"{family.replace(' ', '')}-{weight}.ttf")
+                if not os.path.exists(out):
+                    f = TTFont(src)
+                    if isinstance(spec, dict):
+                        instancer.instantiateVariableFont(f, {**spec, "wght": weight}, inplace=True)
+                    _rename(f, family, weight)
+                    f.save(out)
+                font_manager.fontManager.addfont(out)
+        plt.rcParams["font.family"] = ATLAS["font"]
+
+    try:
+        load_fonts()
+    except Exception as exc:
+        print("fonts unavailable, falling back:", exc)
+        ATLAS.update(font="DejaVu Sans", serif="DejaVu Serif", mono="DejaVu Sans Mono")
+
+    def _mark(fig):
+        bg = fig.add_axes([0, 0, 1, 1], zorder=-10)
+        bg.set_axis_off()
+        bg.set_xlim(0, 1)
+        bg.set_ylim(0, 1)
+        gx, gy = np.meshgrid(np.arange(0.04, 0.97, 0.045), np.arange(0.11, 0.80, 0.08))
+        bg.scatter(gx, gy, s=2.2, color=ATLAS["ink"], alpha=0.05, linewidths=0)
+        bg.add_line(Line2D([0, 1], [0.992, 0.992], color=ATLAS["accent"], lw=1.5, solid_capstyle="butt"))
+        globe = fig.add_axes([0.954, 0.036, 0.0219, 0.0389], zorder=5)
+        globe.set_axis_off()
+        globe.set_xlim(-1.15, 1.15)
+        globe.set_ylim(-1.15, 1.15)
+        globe.set_aspect("equal")
+        kw = dict(fill=False, ec=ATLAS["accent"], lw=0.9, alpha=0.35)
+        globe.add_patch(Circle((0, 0), 1, **kw))
+        globe.add_patch(Ellipse((0, 0), 0.9, 2, **kw))
+        globe.add_line(Line2D([-0.95, 0.95], [0.4, 0.4], color=ATLAS["accent"], lw=0.7, alpha=0.35))
+        globe.add_line(Line2D([-0.95, 0.95], [-0.4, -0.4], color=ATLAS["accent"], lw=0.7, alpha=0.35))
+
     def canvas(rect=(0.08, 0.16, 0.86, 0.60)):
         fig = plt.figure(figsize=(12.8, 7.2), dpi=100, facecolor=ATLAS["bg"])
+        _mark(fig)
         ax = fig.add_axes(list(rect))
-        ax.set_facecolor(ATLAS["bg"])
+        ax.set_facecolor("none")
         for s in ax.spines.values():
             s.set_visible(False)
-        ax.tick_params(colors=ATLAS["muted"], labelsize=11, length=0)
+        ax.tick_params(colors=ATLAS["muted"], labelsize=10.5, length=0)
+        for lab in ax.get_xticklabels() + ax.get_yticklabels():
+            lab.set_family(ATLAS["mono"])
         return fig, ax
 
     def chrome(fig, kicker, title, subtitle, source):
-        fig.text(0.08, 0.95, kicker, color=ATLAS["accent"], fontsize=11, fontweight="bold", family=ATLAS["font"], va="top")
-        fig.text(0.08, 0.91, title, color=ATLAS["ink"], fontsize=26, fontweight="bold", family=ATLAS["font"], va="top")
+        fig.text(0.08, 0.95, kicker.upper(), color=ATLAS["accent"], fontsize=10.5, family=ATLAS["mono"], va="top")
+        fig.text(0.08, 0.91, title, color=ATLAS["ink"], fontsize=27, fontweight="bold", family=ATLAS["serif"], va="top")
         fig.text(0.08, 0.845, subtitle, color=ATLAS["muted"], fontsize=13, family=ATLAS["font"], va="top")
-        fig.text(0.08, 0.05, source, color=ATLAS["muted"], fontsize=10, family=ATLAS["font"])
-        fig.text(0.94, 0.05, "atlas-research.io", color=ATLAS["accent"], fontsize=11, fontweight="bold", family=ATLAS["font"], ha="right")
+        fig.text(0.08, 0.05, source, color=ATLAS["muted"], fontsize=9.5, family=ATLAS["mono"])
+        fig.text(0.945, 0.05, "atlas-research.io", color=ATLAS["accent"], fontsize=10.5, family=ATLAS["mono"], ha="right")
 
     def ease(t):
         return 1 - (1 - t) ** 2
@@ -148,61 +236,6 @@ def _(FFMpegWriter, FuncAnimation, plt, subprocess, tempfile):
             return f.read()
 
     return ATLAS, BLOC_COLOR, FPS, canvas, chrome, concat, ease, read, save_scene
-
-
-@app.cell
-def _(ATLAS, FPS, YEAR_EVENTS, canvas, chrome, ease, np, odds_year, pd, save_scene):
-    fig0, ax0 = canvas(rect=(0.17, 0.20, 0.77, 0.50))
-    chrome(fig0, "THE RACE", "A year of betting on who runs Israel", "Each dot is the Polymarket probability of being the next prime minister. The track runs 0 to 100%. Nobody got past 65%.", "Source: Polymarket daily price history, Nov 2025 to 28 Oct 2026. Atlas Research.")
-    RUNNERS = [("Netanyahu", ATLAS["hot"]), ("Eisenkot", ATLAS["accent"]), ("Bennett", ATLAS["amber"])]
-    n0 = len(odds_year)
-    ax0.set_xlim(0, 1.0)
-    ax0.set_ylim(-0.7, len(RUNNERS) - 0.3)
-    ax0.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
-    ax0.set_xticklabels(["0%", "25%", "50%", "75%", "100%"], family=ATLAS["font"])
-    ax0.set_yticks([])
-    ax0.grid(axis="x", color="#2a2a2a", linewidth=0.8)
-    ax0.axvline(1.0, color=ATLAS["ink"], linewidth=2)
-    ax0.text(0.995, len(RUNNERS) - 0.45, "FINISH", color=ATLAS["ink"], fontsize=10, fontweight="bold", ha="right", va="bottom", family=ATLAS["font"])
-    tr0 = ax0.get_yaxis_transform()
-    lanes = []
-    for j, (name, color) in enumerate(RUNNERS):
-        y = len(RUNNERS) - 1 - j
-        ax0.axhline(y, color="#242424", linewidth=22, zorder=0)
-        ax0.text(-0.015, y, name, color=color, fontsize=15, fontweight="bold", ha="right", va="center", family=ATLAS["font"], transform=tr0)
-        (trail,) = ax0.plot([], [], color=color, linewidth=6, alpha=0.25, solid_capstyle="round")
-        (dot,) = ax0.plot([], [], "o", color=color, markersize=20, markeredgecolor=ATLAS["bg"], markeredgewidth=2, zorder=5)
-        val = ax0.text(0, y + 0.3, "", color=color, fontsize=13, fontweight="bold", ha="center", va="bottom", family=ATLAS["font"], zorder=6)
-        lanes.append((name, y, trail, dot, val))
-    date0 = fig0.text(0.94, 0.78, "", color=ATLAS["ink"], fontsize=22, fontweight="bold", ha="right", family=ATLAS["font"])
-    flag0 = fig0.text(0.17, 0.13, "", color=ATLAS["amber"], fontsize=13, fontweight="bold", family=ATLAS["font"])
-    ev0 = [(int(np.searchsorted(odds_year.index, pd.Timestamp(d, tz="UTC"))), lab.replace("\n", " ")) for d, lab in YEAR_EVENTS]
-    draw0 = int(FPS * 14)
-    hold0 = int(FPS * 3)
-    TRAIL = 25
-
-    def scene0(frame):
-        i = int(ease(min(1, frame / draw0)) * (n0 - 1))
-        date0.set_text(odds_year.index[i].strftime("%d %b %Y"))
-        out = [date0, flag0]
-        for name, y, trail, dot, val in lanes:
-            series = odds_year[name].values
-            x = float(series[i])
-            lo = max(0, i - TRAIL)
-            trail.set_data(series[lo:i + 1], [y] * (i + 1 - lo))
-            dot.set_data([x], [y])
-            val.set_position((x, y + 0.3))
-            val.set_text(f"{x*100:.0f}%")
-            out += [trail, dot, val]
-        flag0.set_text("")
-        for idx, lab in ev0:
-            if 0 <= i - idx <= 18:
-                flag0.set_text(f"▲ {lab}")
-        return out
-
-    scene0_path = save_scene(fig0, scene0, draw0 + hold0)
-    return (scene0_path,)
-
 
 @app.cell
 def _(ATLAS, FPS, YEAR_EVENTS, canvas, chrome, ease, np, odds_year, pd, save_scene):
@@ -404,13 +437,12 @@ def _(ATLAS, FPS, canvas, chrome, ease, save_scene):
 
 
 @app.cell
-def _(concat, mo, read, scene0_path, scene1_path, scene2_path, scene3_path, scene4_path, scene5_path):
-    full_mp4 = concat([scene0_path, scene1_path, scene2_path, scene3_path, scene4_path, scene5_path])
+def _(concat, mo, read, scene1_path, scene2_path, scene3_path, scene4_path, scene5_path):
+    full_mp4 = concat([scene1_path, scene2_path, scene3_path, scene4_path, scene5_path])
     mo.vstack([
         mo.video(full_mp4, controls=True, autoplay=True, loop=True, muted=True),
         mo.hstack([
             mo.download(data=full_mp4, filename="israel-voted-nobody-won.mp4", mimetype="video/mp4", label="Download full animation"),
-            mo.download(data=read(scene0_path), filename="israel-0-the-race.mp4", mimetype="video/mp4", label="Race"),
             mo.download(data=read(scene1_path), filename="israel-1-the-bet.mp4", mimetype="video/mp4", label="Scene 1"),
             mo.download(data=read(scene2_path), filename="israel-2-election-night.mp4", mimetype="video/mp4", label="Scene 2"),
             mo.download(data=read(scene3_path), filename="israel-3-the-count.mp4", mimetype="video/mp4", label="Scene 3"),
