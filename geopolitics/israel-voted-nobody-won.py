@@ -58,16 +58,16 @@ def _(dt, json, pd, urllib, yf):
     ]
 
     SEATS = [
-        ("Likud", "Netanyahu", 26, "right"),
+        ("Likud", "Netanyahu", 27, "right"),
         ("Yashar", "Eisenkot", 21, "opp"),
-        ("Joint List", "Jabareen", 12, "arab"),
+        ("Joint List", "Jabareen", 11, "arab"),
         ("Together", "Bennett", 12, "opp"),
         ("Democrats", "Golan", 8, "opp"),
-        ("Ra'am", "Abbas", 7, "arab"),
+        ("Ra'am", "Abbas", 8, "arab"),
         ("Yisrael Beiteinu", "Lieberman", 7, "opp"),
         ("UTJ", "Asher", 7, "right"),
         ("Otzma Yehudit", "Ben-Gvir", 7, "right"),
-        ("Shas", "Deri", 7, "right"),
+        ("Shas", "Deri", 6, "right"),
         ("RZP-Zehut", "Smotrich", 6, "right"),
     ]
     seats = pd.DataFrame(SEATS, columns=["party", "leader", "seats", "bloc"])
@@ -326,7 +326,7 @@ def _(ATLAS, FPS, canvas, chrome, ease, np, odds_night, save_scene):
 @app.cell
 def _(ATLAS, BLOC_COLOR, FPS, blocs, canvas, chrome, ease, np, save_scene, seats):
     fig3, ax3 = canvas(rect=(0.30, 0.14, 0.62, 0.62))
-    chrome(fig3, "THE COUNT", "26 seats, and nobody gets to 61", "Preliminary Knesset result, 90% counted. Netanyahu's bloc 53, the opposition 48, the Arab parties 19. Majority is 61.", "Source: Central Elections Committee via Wikipedia, 28 Oct 2026, 90.2% counted. Official results 4 Nov. Atlas Research.")
+    chrome(fig3, "THE COUNT", "27 seats, and nobody gets to 61", "Final Knesset result. Netanyahu's bloc 53, the opposition 48, the Arab parties 19. Majority is 61.", "Source: Central Elections Committee final results, 29 Oct 2026. Turnout 77.9%. Atlas Research.")
     n3 = len(seats)
     y3 = np.arange(n3)[::-1]
     colors3 = [BLOC_COLOR[b] for b in seats["bloc"]]
@@ -410,7 +410,7 @@ def _(ATLAS, FPS, canvas, chrome, ease, save_scene):
     ax5.set_xticks([])
     ax5.set_yticks([])
     STEPS = [
-        ("1", "Official results 4 Nov. Herzog hands someone the mandate within 7 days.\nNetanyahu stays caretaker PM. Talks could take weeks."),
+        ("1", "Results reach Herzog 4 Nov, Knesset sworn in 10 Nov. Herzog picks who tries first,\nthen 42 days of talks. Eisenkot refuses to serve under Netanyahu."),
         ("2", "US midterms 3 Nov. Trump told Israelis to re-elect Netanyahu\nto \"finish the job\" in Iran."),
         ("3", "Netanyahu, Wednesday: a rare chance, with Trump,\n\"to remove the existential threat of Iran once and for all.\""),
         ("4", "US media: the military is ready to strike within days if ordered.\nIn Tehran, people are forming groups to warn each other of jets."),
