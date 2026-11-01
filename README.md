@@ -17,4 +17,6 @@ pip install -r requirements.txt
 marimo edit pieces/2026-10-29-israel-voted-nobody-won.py
 ```
 
+This repo only holds Atlas Research's own pieces, so we don't take pull requests or submissions. Fork anything you like.
+
 Research done with [Atlas Research](https://atlas-research.io).
