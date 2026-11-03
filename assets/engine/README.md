@@ -1,0 +1,1 @@
+atlas_frlg_engine.py is the pixel scene engine used inside the piece notebooks (Scene, dialogue, HP bars, NPC sprites, write_mp4). gen_backdrop.py generates and snaps a new 320x180 backdrop with the image model. Backdrops live in ../backdrops, the font in ../../fonts.
