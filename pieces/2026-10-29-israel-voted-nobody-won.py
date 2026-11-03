@@ -4,453 +4,491 @@ __generated_with = "0.14.0"
 app = marimo.App(width="medium")
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
     import marimo as mo
-    import io
     import os
     import json
     import subprocess
     import tempfile
     import urllib.request
-    import datetime as dt
     import numpy as np
     import pandas as pd
-    import yfinance as yf
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    from matplotlib.animation import FuncAnimation, FFMpegWriter
-    return FFMpegWriter, FuncAnimation, dt, io, json, mo, np, os, pd, plt, subprocess, tempfile, urllib, yf
+    from PIL import Image, ImageDraw, ImageFont
+    return Image, ImageDraw, ImageFont, json, mo, np, os, pd, subprocess, tempfile, urllib
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
-    mo.md("# Israel voted. Nobody won. The bettors had it first.")
+    mo.md("# Israel voted. Nobody won.")
     return
 
 
-@app.cell
-def _(dt, json, pd, urllib, yf):
-    TOKENS = {
-        "Netanyahu": "20006732765674855733524007935991362439352594042415161039767275461950712817548",
-        "Eisenkot": "52487256270918227930942830546248720603566203568229607048093730748840489555808",
-        "Bennett": "58945936829392654397399777214757608864525173988558750256164021442231118224154",
-    }
+@app.cell(hide_code=True)
+def _(Image, ImageDraw, ImageFont, os, subprocess, tempfile, urllib):
+    LW, LH, SCALE = 320, 180, 4
+    ASSET_DIR = os.path.join(tempfile.gettempdir(), "atlas-pixel-assets")
+    os.makedirs(ASSET_DIR, exist_ok=True)
+    RAW = "https://raw.githubusercontent.com/atlas-research-io/atlas-research-notebooks/main"
 
-    def poly_history(token, interval, fidelity):
-        url = f"https://clob.polymarket.com/prices-history?market={token}&interval={interval}&fidelity={fidelity}"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; AtlasResearch/1.0)"})
-        raw = urllib.request.urlopen(req, timeout=30).read().decode()
-        h = json.loads(raw)["history"]
-        s = pd.Series([p["p"] for p in h], index=[dt.datetime.fromtimestamp(p["t"], dt.timezone.utc) for p in h])
-        return s[~s.index.duplicated()].sort_index()
-
-    odds_year = pd.DataFrame({k: poly_history(t, "max", 1440) for k, t in TOKENS.items()}).ffill().dropna()
-    odds_night = pd.DataFrame({k: poly_history(t, "1w", 60) for k, t in TOKENS.items()}).ffill().dropna()
-    odds_night = odds_night.loc[pd.Timestamp("2026-10-27 12:00", tz="UTC"):]
-
-    YEAR_EVENTS = [
-        ("2026-02-28", "War on Iran\nbegins"),
-        ("2026-06-17", "Islamabad memo,\nfighting pauses"),
-        ("2026-07-27", "Eisenkot\novertakes"),
-        ("2026-10-27", "Election\nday"),
-    ]
-
-    SEATS = [
-        ("Likud", "Netanyahu", 27, "right"),
-        ("Yashar", "Eisenkot", 21, "opp"),
-        ("Joint List", "Jabareen", 11, "arab"),
-        ("Together", "Bennett", 12, "opp"),
-        ("Democrats", "Golan", 8, "opp"),
-        ("Ra'am", "Abbas", 8, "arab"),
-        ("Yisrael Beiteinu", "Lieberman", 7, "opp"),
-        ("UTJ", "Asher", 7, "right"),
-        ("Otzma Yehudit", "Ben-Gvir", 7, "right"),
-        ("Shas", "Deri", 6, "right"),
-        ("RZP-Zehut", "Smotrich", 6, "right"),
-    ]
-    seats = pd.DataFrame(SEATS, columns=["party", "leader", "seats", "bloc"])
-    blocs = seats.groupby("bloc")["seats"].sum()
-
-    px = yf.download(["EIS", "ILS=X", "BZ=F"], start="2026-10-20", end="2026-10-29", auto_adjust=True, progress=False)["Close"]
-    day_move = (px.loc["2026-10-28"] / px.loc["2026-10-27"] - 1) * 100
-    REPORTED = {"EIS": -4.9, "BZ=F": -2.6}
-
-    def move(ticker):
-        v = float(day_move.get(ticker, float("nan")))
-        return v if v == v else REPORTED[ticker]
-
-    MOVES = [
-        ("Israel ETF (EIS), New York", move("EIS")),
-        ("Tel Aviv 35", -2.3),
-        ("Shekel vs dollar", -2.2),
-        ("Israel 10-year yield, bp", 8),
-        ("Brent crude", move("BZ=F")),
-    ]
-    odds_year.tail(3), blocs, day_move
-    return MOVES, REPORTED, SEATS, TOKENS, YEAR_EVENTS, blocs, day_move, move, odds_night, odds_year, poly_history, px, seats
-
-
-@app.cell
-def _(FFMpegWriter, FuncAnimation, np, os, plt, subprocess, tempfile, urllib):
-    from matplotlib import font_manager
-    from matplotlib.lines import Line2D
-    from matplotlib.patches import Circle, Ellipse
-    from fontTools.ttLib import TTFont
-    from fontTools.varLib import instancer
-
-    ATLAS = {
-        "bg": "#0f0f0f",
-        "ink": "#f4f1ea",
-        "muted": "#8a8780",
-        "accent": "#4a9d9a",
-        "hot": "#d4607a",
-        "amber": "#e0a24f",
-        "blue": "#6b97e0",
-        "violet": "#9385e3",
-        "font": "Atlas Sans",
-        "serif": "Atlas Serif",
-        "mono": "Atlas Mono",
-    }
-    BLOC_COLOR = {"right": ATLAS["hot"], "opp": ATLAS["accent"], "arab": ATLAS["amber"]}
-    FPS = 24
-
-    FONT_DIR = os.path.join(tempfile.gettempdir(), "atlas-fonts")
-    os.makedirs(FONT_DIR, exist_ok=True)
-    FONT_SRC = [
-        ("Atlas Serif", "https://github.com/google/fonts/raw/main/ofl/sourceserif4/SourceSerif4%5Bopsz%2Cwght%5D.ttf", {"opsz": 24}),
-        ("Atlas Sans", "https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf", {"opsz": 14}),
-        ("Atlas Mono", "https://github.com/JetBrains/JetBrainsMono/raw/master/fonts/ttf/JetBrainsMono-Regular.ttf", 400),
-        ("Atlas Mono", "https://github.com/JetBrains/JetBrainsMono/raw/master/fonts/ttf/JetBrainsMono-Bold.ttf", 700),
-    ]
-
-    def _fetch(url):
-        path = os.path.join(FONT_DIR, url.rsplit("/", 1)[1].replace("%5B", "[").replace("%5D", "]").replace("%2C", ","))
+    def fetch(rel):
+        path = os.path.join(ASSET_DIR, rel.replace("/", "_"))
         if not os.path.exists(path):
-            req = urllib.request.Request(url, headers={"User-Agent": "atlas-research"})
+            req = urllib.request.Request(f"{RAW}/{rel}", headers={"User-Agent": "atlas-research"})
             with urllib.request.urlopen(req, timeout=60) as r, open(path, "wb") as f:
                 f.write(r.read())
         return path
 
-    def _rename(font, family, weight):
-        style = "Bold" if weight >= 600 else "Regular"
-        for rec in font["name"].names:
-            if rec.nameID in (1, 16):
-                rec.string = family
-            elif rec.nameID in (2, 17):
-                rec.string = style
-            elif rec.nameID == 4:
-                rec.string = f"{family} {style}"
-            elif rec.nameID == 6:
-                rec.string = f"{family.replace(' ', '')}-{style}"
-        font["OS/2"].usWeightClass = weight
-        if weight >= 600:
-            font["OS/2"].fsSelection = (font["OS/2"].fsSelection | (1 << 5)) & ~(1 << 6)
-            font["head"].macStyle |= 1
-        else:
-            font["OS/2"].fsSelection = (font["OS/2"].fsSelection | (1 << 6)) & ~(1 << 5)
-            font["head"].macStyle &= ~1
+    FONT_PATH = fetch("fonts/PokemonClassic.ttf")
 
-    def load_fonts():
-        for family, url, spec in FONT_SRC:
-            src = _fetch(url)
-            weights = (400, 700) if isinstance(spec, dict) else (spec,)
-            for weight in weights:
-                out = os.path.join(FONT_DIR, f"{family.replace(' ', '')}-{weight}.ttf")
-                if not os.path.exists(out):
-                    f = TTFont(src)
-                    if isinstance(spec, dict):
-                        instancer.instantiateVariableFont(f, {**spec, "wght": weight}, inplace=True)
-                    _rename(f, family, weight)
-                    f.save(out)
-                font_manager.fontManager.addfont(out)
-        plt.rcParams["font.family"] = ATLAS["font"]
+    def backdrop(name):
+        return Image.open(fetch(f"assets/backdrops/{name}.png")).convert("RGB")
 
-    try:
-        load_fonts()
-    except Exception as exc:
-        print("fonts unavailable, falling back:", exc)
-        ATLAS.update(font="DejaVu Sans", serif="DejaVu Serif", mono="DejaVu Sans Mono")
+    DOLLAR = [
+        "..#..",
+        ".####",
+        "#.#..",
+        ".###.",
+        "..#.#",
+        "####.",
+        "..#..",
+    ]
 
-    def _mark(fig):
-        bg = fig.add_axes([0, 0, 1, 1], zorder=-10)
-        bg.set_axis_off()
-        bg.set_xlim(0, 1)
-        bg.set_ylim(0, 1)
-        gx, gy = np.meshgrid(np.arange(0.04, 0.97, 0.045), np.arange(0.11, 0.80, 0.08))
-        bg.scatter(gx, gy, s=2.2, color=ATLAS["ink"], alpha=0.05, linewidths=0)
-        bg.add_line(Line2D([0, 1], [0.992, 0.992], color=ATLAS["accent"], lw=1.5, solid_capstyle="butt"))
-        globe = fig.add_axes([0.954, 0.036, 0.0219, 0.0389], zorder=5)
-        globe.set_axis_off()
-        globe.set_xlim(-1.15, 1.15)
-        globe.set_ylim(-1.15, 1.15)
-        globe.set_aspect("equal")
-        kw = dict(fill=False, ec=ATLAS["accent"], lw=0.9, alpha=0.35)
-        globe.add_patch(Circle((0, 0), 1, **kw))
-        globe.add_patch(Ellipse((0, 0), 0.9, 2, **kw))
-        globe.add_line(Line2D([-0.95, 0.95], [0.4, 0.4], color=ATLAS["accent"], lw=0.7, alpha=0.35))
-        globe.add_line(Line2D([-0.95, 0.95], [-0.4, -0.4], color=ATLAS["accent"], lw=0.7, alpha=0.35))
+    P = {
+        "text": (64, 64, 72),
+        "shadow": (200, 200, 208),
+        "panel": (248, 248, 248),
+        "panel_line": (104, 128, 152),
+        "panel_dark": (40, 48, 64),
+        "hp_bg": (72, 72, 80),
+        "hp_tag": (248, 200, 72),
+        "hp_tag_text": (104, 72, 16),
+        "green": (88, 208, 128),
+        "green_l": (152, 240, 184),
+        "yellow": (248, 208, 56),
+        "red": (232, 72, 72),
+        "pink": (212, 96, 122),
+        "pink_l": (240, 160, 180),
+        "teal": (56, 150, 146),
+        "teal_l": (140, 210, 205),
+        "out": (24, 24, 32),
+        "platform": (120, 184, 96),
+        "platform_rim": (72, 136, 64),
+    }
 
-    def canvas(rect=(0.08, 0.16, 0.86, 0.60)):
-        fig = plt.figure(figsize=(12.8, 7.2), dpi=100, facecolor=ATLAS["bg"])
-        _mark(fig)
-        ax = fig.add_axes(list(rect))
-        ax.set_facecolor("none")
-        for s in ax.spines.values():
-            s.set_visible(False)
-        ax.tick_params(colors=ATLAS["muted"], labelsize=10.5, length=0)
-        for lab in ax.get_xticklabels() + ax.get_yticklabels():
-            lab.set_family(ATLAS["mono"])
-        return fig, ax
 
-    def chrome(fig, kicker, title, subtitle, source):
-        fig.text(0.08, 0.95, kicker.upper(), color=ATLAS["accent"], fontsize=10.5, family=ATLAS["mono"], va="top")
-        fig.text(0.08, 0.91, title, color=ATLAS["ink"], fontsize=27, fontweight="bold", family=ATLAS["serif"], va="top")
-        fig.text(0.08, 0.845, subtitle, color=ATLAS["muted"], fontsize=13, family=ATLAS["font"], va="top")
-        fig.text(0.08, 0.05, source, color=ATLAS["muted"], fontsize=9.5, family=ATLAS["mono"])
-        fig.text(0.945, 0.05, "atlas-research.io", color=ATLAS["accent"], fontsize=10.5, family=ATLAS["mono"], ha="right")
+    class Scene:
+        def __init__(self, backdrop=None):
+            self.im = Image.new("RGB", (LW, LH), (136, 216, 152))
+            if backdrop is not None:
+                self.im.paste(backdrop, (0, 0))
+            self.d = ImageDraw.Draw(self.im)
+            self.font = ImageFont.truetype(FONT_PATH, 8)
 
-    def ease(t):
-        return 1 - (1 - t) ** 2
+        def platform(self, cx, cy, rx, ry):
+            self.d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=P["platform_rim"])
+            self.d.ellipse([cx - rx + 2, cy - ry + 1, cx + rx - 2, cy + ry - 2], fill=P["platform"])
 
-    def save_scene(fig, draw, frames):
-        anim = FuncAnimation(fig, draw, frames=frames, blit=False)
-        path = tempfile.mktemp(suffix=".mp4")
-        anim.save(path, writer=FFMpegWriter(fps=FPS, codec="libx264", extra_args=["-pix_fmt", "yuv420p", "-movflags", "faststart"]), savefig_kwargs={"facecolor": ATLAS["bg"]})
-        plt.close(fig)
+        def sprite(self, rgba, x, y):
+            self.im.paste(rgba, (x, y), rgba)
+
+        def panel(self, x0, y0, x1, y1):
+            self.d.rectangle([x0 + 2, y0, x1 - 2, y1], fill=P["panel"])
+            self.d.rectangle([x0, y0 + 2, x1, y1 - 2], fill=P["panel"])
+            self.d.line([x0 + 2, y0, x1 - 2, y0], fill=P["panel_dark"])
+            self.d.line([x0 + 2, y1, x1 - 2, y1], fill=P["panel_dark"])
+            self.d.line([x0, y0 + 2, x0, y1 - 2], fill=P["panel_dark"])
+            self.d.line([x1, y0 + 2, x1, y1 - 2], fill=P["panel_dark"])
+            for (x, y) in ((x0 + 1, y0 + 1), (x1 - 1, y0 + 1), (x0 + 1, y1 - 1), (x1 - 1, y1 - 1)):
+                self.d.point((x, y), fill=P["panel_dark"])
+            self.d.rectangle([x0 + 2, y0 + 2, x1 - 2, y1 - 2], outline=P["panel_line"])
+
+        def textbox(self):
+            x0, y0, x1, y1 = 4, LH - 44, LW - 5, LH - 4
+            self.d.rectangle([x0, y0, x1, y1], fill=P["panel_line"])
+            self.d.rectangle([x0 + 1, y0 + 1, x1 - 1, y1 - 1], fill=P["panel"])
+            self.d.rectangle([x0 + 2, y0 + 2, x1 - 2, y1 - 2], outline=P["panel_line"])
+            self.d.rectangle([x0 + 3, y0 + 3, x1 - 3, y1 - 3], outline=P["panel"])
+            for (x, y) in ((x0, y0), (x1, y0), (x0, y1), (x1, y1)):
+                self.d.point((x, y), fill=self.im.getpixel((x, y)) if False else P["panel_line"])
+
+        def glyph(self, x, y, s, color):
+            cx = x
+            for ch in s:
+                if ch == "$":
+                    for j, row in enumerate(DOLLAR):
+                        for i, c in enumerate(row):
+                            if c == "#":
+                                self.d.point((cx + i, y + 2 + j), fill=color)
+                    cx += 6
+                    continue
+                mask = Image.new("L", (16, 16), 0)
+                ImageDraw.Draw(mask).text((0, 0), ch, fill=255, font=self.font)
+                mask = mask.point(lambda v: 255 if v > 90 else 0)
+                self.im.paste(Image.new("RGB", (16, 16), color), (cx, y), mask)
+                cx += int(round(self.font.getlength(ch)))
+            return cx
+
+        def text(self, x, y, s, color="text", shadow=True):
+            if shadow:
+                self.glyph(x + 1, y + 1, s, P["shadow"])
+            return self.glyph(x, y, s, P[color] if isinstance(color, str) else color)
+
+        def hp(self, x, y, frac, width=48, color=None):
+            self.d.rectangle([x, y, x + 11, y + 6], fill=P["hp_tag"], outline=P["panel_dark"])
+            H = ["#.#", "###", "#.#"]
+            Pg = ["##.", "#.#", "##.", "#..", "#.."]
+            for j, row in enumerate(["#.#.##.", "#.#.#.#", "###.##.", "#.#.#..", "#.#.#.."]):
+                for i, c in enumerate(row):
+                    if c == "#":
+                        self.d.point((x + 3 + i, y + 1 + j), fill=P["hp_tag_text"])
+            bx = x + 12
+            self.d.rectangle([bx, y + 1, bx + width + 1, y + 5], fill=P["hp_bg"], outline=P["panel_dark"])
+            f = max(0.0, min(1.0, frac))
+            fw = int(round(width * f))
+            if color is None:
+                color = "green" if f > 0.5 else ("yellow" if f > 0.2 else "red")
+            if fw > 0:
+                self.d.rectangle([bx + 1, y + 2, bx + fw, y + 4], fill=P[color])
+                light = P.get(color + "_l", P["green_l"])
+                self.d.rectangle([bx + 1, y + 2, bx + fw, y + 2], fill=light)
+
+        def status(self, x, y, name, pct, color, right=False):
+            w = 124
+            self.panel(x, y, x + w, y + 26)
+            self.text(x + 8, y + 4, name)
+            self.text(x + w - 8 - 6 * len(f"{pct*100:.0f}%") + 2, y + 4, f"{pct*100:.0f}%", color=color)
+            self.hp(x + 8, y + 16, pct, width=w - 36, color=color)
+
+        def frame(self):
+            return self.im.resize((LW * SCALE, LH * SCALE), Image.NEAREST)
+
+
+    def dialogue(sc, lines, progress=1.0):
+        sc.textbox()
+        total = sum(len(l) for l in lines)
+        shown = int(total * progress)
+        y = LH - 36
+        for l in lines:
+            take = max(0, min(len(l), shown))
+            sc.text(13, y, l[:take])
+            shown -= len(l)
+            y += 14
+        if progress >= 1:
+            x, yy = LW - 18, LH - 13
+            sc.d.polygon([(x, yy), (x + 6, yy), (x + 3, yy + 3)], fill=P["panel_dark"])
+
+
+
+    def dialogue(sc, lines, progress=1.0):
+        sc.textbox()
+        total = sum(len(l) for l in lines)
+        shown = int(total * progress)
+        y = LH - 36
+        for l in lines:
+            take = max(0, min(len(l), shown))
+            sc.text(13, y, l[:take])
+            shown -= len(l)
+            y += 14
+        if progress >= 1:
+            x, yy = LW - 18, LH - 13
+            sc.d.polygon([(x, yy), (x + 6, yy), (x + 3, yy + 3)], fill=P["panel_dark"])
+
+    def write_mp4(frames, path, fps=24, hold=2):
+        tmp = tempfile.mkdtemp()
+        k = 0
+        for fr in frames:
+            for _ in range(hold):
+                fr.save(os.path.join(tmp, f"{k:05d}.png"))
+                k += 1
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", os.path.join(tmp, "%05d.png"), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "faststart", path], check=True)
         return path
 
-    def concat(paths):
-        lst = tempfile.mktemp(suffix=".txt")
-        with open(lst, "w") as f:
-            for p in paths:
-                f.write(f"file '{p}'\n")
-        out = tempfile.mktemp(suffix=".mp4")
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", out], check=True)
-        with open(out, "rb") as f:
-            return f.read()
-
-    def read(path):
-        with open(path, "rb") as f:
-            return f.read()
-
-    return ATLAS, BLOC_COLOR, FPS, canvas, chrome, concat, ease, read, save_scene
-
-@app.cell
-def _(ATLAS, FPS, YEAR_EVENTS, canvas, chrome, ease, np, odds_year, pd, save_scene):
-    fig1, ax1 = canvas()
-    chrome(fig1, "THE BET, ONE YEAR", "In September the market gave Netanyahu a 28% chance", "Polymarket odds of being the next prime minister, daily. The war made him, the war unmade him, the count brought him back.", "Source: Polymarket price history, Nov 2025 to 28 Oct 2026. Atlas Research.")
-    n1 = len(odds_year)
-    x1 = np.arange(n1)
-    ax1.set_xlim(0, n1 * 1.17)
-    ax1.set_ylim(0, 0.8)
-    ax1.set_yticks([0, 0.25, 0.5, 0.75])
-    ax1.set_yticklabels(["0%", "25%", "50%", "75%"], family=ATLAS["font"])
-    ax1.grid(axis="y", color="#2a2a2a", linewidth=0.8)
-    months1 = [i for i in range(1, n1) if odds_year.index[i].month != odds_year.index[i - 1].month]
-    ax1.set_xticks(months1)
-    ax1.set_xticklabels([odds_year.index[i].strftime("%b") for i in months1], family=ATLAS["font"])
-    (lb,) = ax1.plot([], [], color=ATLAS["hot"], linewidth=3)
-    (le,) = ax1.plot([], [], color=ATLAS["accent"], linewidth=3)
-    tb = ax1.text(0, 0, "", color=ATLAS["hot"], fontsize=14, fontweight="bold", va="center", family=ATLAS["font"])
-    te = ax1.text(0, 0, "", color=ATLAS["accent"], fontsize=14, fontweight="bold", va="center", family=ATLAS["font"])
-    ev1 = [(int(np.searchsorted(odds_year.index, pd.Timestamp(d, tz="UTC"))), lab) for d, lab in YEAR_EVENTS]
-    ev1_lines = [ax1.axvline(i, color=ATLAS["muted"], linewidth=0.8, linestyle="--", alpha=0) for i, _ in ev1]
-    ev1_texts = [ax1.text(i + 2, 0.78 - 0.07 * (k % 2), "", color=ATLAS["muted"], fontsize=10, family=ATLAS["font"], va="top", linespacing=1.15) for k, (i, _) in enumerate(ev1)]
-    draw1 = int(FPS * 11)
-    hold1 = int(FPS * 3)
-
-    def scene1(frame):
-        n = int(ease(min(1, frame / draw1)) * (n1 - 1)) + 1
-        b = odds_year["Netanyahu"].values
-        e = odds_year["Eisenkot"].values
-        lb.set_data(x1[:n], b[:n])
-        le.set_data(x1[:n], e[:n])
-        gap = 0.05 if abs(b[n - 1] - e[n - 1]) < 0.08 else 0
-        tb.set_position((n + 2, b[n - 1] + (gap if b[n - 1] >= e[n - 1] else -gap)))
-        tb.set_text(f"Netanyahu {b[n-1]*100:.0f}%")
-        te.set_position((n + 2, e[n - 1] + (gap if e[n - 1] > b[n - 1] else -gap)))
-        te.set_text(f"Eisenkot {e[n-1]*100:.0f}%")
-        for (i1, lab1), ln1, t1 in zip(ev1, ev1_lines, ev1_texts):
-            if i1 < n:
-                ln1.set_alpha(1)
-                t1.set_text(lab1)
-        return [lb, le, tb, te] + ev1_lines + ev1_texts
-
-    scene1_path = save_scene(fig1, scene1, draw1 + hold1)
-    return (scene1_path,)
-
-
-@app.cell
-def _(ATLAS, FPS, canvas, chrome, ease, np, odds_night, save_scene):
-    fig2, ax2 = canvas()
-    chrome(fig2, "ELECTION NIGHT, HOUR BY HOUR", "Then the exit polls were wrong", "Polymarket odds through the night. Exit polls at 22:00 Israel time said a tie. The count said otherwise by 3am.", "Source: Polymarket hourly price history, 27 to 28 Oct 2026, UTC. Atlas Research.")
-    n2 = len(odds_night)
-    x2 = np.arange(n2)
-    ax2.set_xlim(0, n2 * 1.12)
-    ax2.set_ylim(0, 0.8)
-    ax2.set_yticks([0, 0.25, 0.5, 0.75])
-    ax2.set_yticklabels(["0%", "25%", "50%", "75%"], family=ATLAS["font"])
-    ax2.grid(axis="y", color="#2a2a2a", linewidth=0.8)
-    ticks2 = list(range(0, n2, max(1, n2 // 6)))
-    ax2.set_xticks(ticks2)
-    ax2.set_xticklabels([odds_night.index[i].strftime("%a %H:%M") for i in ticks2], family=ATLAS["font"], fontsize=10)
-    (lb2,) = ax2.plot([], [], color=ATLAS["hot"], linewidth=3)
-    (le2,) = ax2.plot([], [], color=ATLAS["accent"], linewidth=3)
-    tb2 = ax2.text(0, 0, "", color=ATLAS["hot"], fontsize=14, fontweight="bold", va="center", family=ATLAS["font"])
-    te2 = ax2.text(0, 0, "", color=ATLAS["accent"], fontsize=14, fontweight="bold", va="center", family=ATLAS["font"])
-    polls_i = int(np.searchsorted(odds_night.index, odds_night.index[0].replace(hour=20, minute=0)))
-    ax2.axvline(polls_i, color=ATLAS["muted"], linewidth=0.8, linestyle="--")
-    ax2.text(polls_i + 0.3, 0.76, "Polls close,\nexit polls: tie", color=ATLAS["muted"], fontsize=10, family=ATLAS["font"], va="top", linespacing=1.15)
-    draw2 = int(FPS * 9)
-    hold2 = int(FPS * 3)
-
-    def scene2(frame):
-        n = int(ease(min(1, frame / draw2)) * (n2 - 1)) + 1
-        b = odds_night["Netanyahu"].values
-        e = odds_night["Eisenkot"].values
-        lb2.set_data(x2[:n], b[:n])
-        le2.set_data(x2[:n], e[:n])
-        gap = 0.05 if abs(b[n - 1] - e[n - 1]) < 0.08 else 0
-        tb2.set_position((n + 0.5, b[n - 1] + (gap if b[n - 1] >= e[n - 1] else -gap)))
-        tb2.set_text(f"Netanyahu {b[n-1]*100:.0f}%")
-        te2.set_position((n + 0.5, e[n - 1] + (gap if e[n - 1] > b[n - 1] else -gap)))
-        te2.set_text(f"Eisenkot {e[n-1]*100:.0f}%")
-        return [lb2, le2, tb2, te2]
-
-    scene2_path = save_scene(fig2, scene2, draw2 + hold2)
-    return (scene2_path,)
-
-
-@app.cell
-def _(ATLAS, BLOC_COLOR, FPS, blocs, canvas, chrome, ease, np, save_scene, seats):
-    fig3, ax3 = canvas(rect=(0.30, 0.14, 0.62, 0.62))
-    chrome(fig3, "THE COUNT", "27 seats, and nobody gets to 61", "Final Knesset result. Netanyahu's bloc 53, the opposition 48, the Arab parties 19. Majority is 61.", "Source: Central Elections Committee final results, 29 Oct 2026. Turnout 77.9%. Atlas Research.")
-    n3 = len(seats)
-    y3 = np.arange(n3)[::-1]
-    colors3 = [BLOC_COLOR[b] for b in seats["bloc"]]
-    bars3 = ax3.barh(y3, [0] * n3, height=0.66, color=colors3)
-    ax3.set_xlim(0, 32)
-    ax3.set_ylim(-0.7, n3 - 0.3)
-    ax3.set_xticks([])
-    ax3.set_yticks([])
-    tr3 = ax3.get_yaxis_transform()
-    for y3i, p3, l3 in zip(y3, seats["party"], seats["leader"]):
-        ax3.text(-0.015, y3i + 0.12, p3, color=ATLAS["ink"], fontsize=13, fontweight="bold", ha="right", va="center", family=ATLAS["font"], transform=tr3)
-        ax3.text(-0.015, y3i - 0.22, l3, color=ATLAS["muted"], fontsize=9.5, ha="right", va="center", family=ATLAS["font"], transform=tr3)
-    vals3 = [ax3.text(0, y3j, "", color=ATLAS["ink"], fontsize=13, fontweight="bold", va="center", family=ATLAS["font"]) for y3j in y3]
-    legend3 = [
-        (f"Netanyahu bloc {int(blocs['right'])}", ATLAS["hot"]),
-        (f"Opposition {int(blocs['opp'])}", ATLAS["accent"]),
-        (f"Arab parties {int(blocs['arab'])}", ATLAS["amber"]),
+    BASE = [
+        "....kkkkkkkk....",
+        "...khhhhhhhhk...",
+        "..khhhhhhhhhhk..",
+        "..khhhhhhhhhhk..",
+        "..khHhhhhhhhHk..",
+        "..kHssssssssHk..",
+        "..kssssssssssk..",
+        "..kssesssssessk.",
+        "..kssesssssessk.",
+        "..kssssssssssSk.",
+        "...kSssssssssk..",
+        "....kSSSSSSSk...",
+        ".....kkssskk....",
+        "....kccwtwcck...",
+        "...kcccwtwcccck.",
+        "..ksccccctcccsk.",
+        "..kkccccccccckk.",
+        "...kCCCCCCCCCk..",
+        "....kpppkpppk...",
+        "....kPPPkPPPk...",
+        "....kffkkkffk...",
     ]
-    for k3, (lab3, c3) in enumerate(legend3):
-        fig3.text(0.30 + k3 * 0.21, 0.795, "■ " + lab3, color=c3, fontsize=11, fontweight="bold", family=ATLAS["font"])
-    per_bar3 = int(FPS * 0.45)
-    hold3 = int(FPS * 3)
 
-    def scene3(frame):
-        for i in range(n3):
-            t = ease(min(1, max(0, (frame - i * per_bar3) / per_bar3)))
-            v = seats["seats"].iloc[i] * t
-            bars3[i].set_width(v)
-            vals3[i].set_x(v + 0.4)
-            vals3[i].set_text(f"{v:.0f}" if t > 0 else "")
-        return list(bars3) + vals3
+    DEFAULT = {
+        "k": (40, 40, 56),
+        "h": (120, 120, 128), "H": (88, 88, 96),
+        "s": (240, 208, 176), "S": (208, 160, 128),
+        "e": (40, 40, 56),
+        "c": (48, 56, 104), "C": (32, 40, 80),
+        "t": (200, 40, 40), "w": (248, 248, 248),
+        "p": (48, 56, 104), "P": (32, 40, 80),
+        "f": (40, 32, 32),
+        "b": (232, 232, 232), "B": (192, 192, 200),
+        "m": (176, 96, 96),
+    }
 
-    scene3_path = save_scene(fig3, scene3, n3 * per_bar3 + hold3)
-    return (scene3_path,)
+    NPCS = {
+        "trump": {
+            "pal": {"h": (248, 216, 96), "H": (216, 176, 56), "s": (240, 168, 104), "S": (208, 128, 72), "c": (40, 48, 96), "C": (24, 32, 72), "p": (40, 48, 96), "P": (24, 32, 72), "t": (216, 40, 40)},
+            "rows": {1: "...khhhhhhhhhk..", 4: "..khhhhhhhhhHhk.", 5: "..kHhhhhhhhhhHk.", 6: "..kHssssssssHk..", 10: "...kSssmmmsssk.."},
+        },
+        "netanyahu": {
+            "pal": {"h": (176, 176, 176), "H": (128, 128, 136), "s": (240, 208, 176), "S": (208, 160, 128), "c": (56, 56, 72), "C": (40, 40, 56), "p": (56, 56, 72), "P": (40, 40, 56), "t": (120, 168, 224)},
+            "rows": {0: "....kkkkkkkk....", 1: "...kssssssssk...", 2: "..kssssssssssk..", 3: "..kssssssssssk..", 4: "..khsssssssshk..", 5: "..khhssssssshhk.", 6: "..khsssssssshk..", 7: "..khsesssssehk..", 8: "..khsesssssehk..", 9: "..kssssSSsssSk..", 10: "...kSsskkkssSk..", 11: "....kSSSSSSSk..."},
+        },
+        "eisenkot": {
+            "pal": {"h": (160, 160, 160), "H": (120, 120, 128), "s": (236, 200, 168), "S": (200, 152, 120), "c": (64, 88, 64), "C": (40, 64, 40), "p": (56, 56, 64), "P": (40, 40, 48), "t": (248, 248, 248)},
+            "rows": {1: "...khhhhhhhhk...", 2: "..khhhhhhhhhhk..", 3: "..kHssssssssHk..", 4: "..kssssssssssk..", 13: "....kccwwwcck..."},
+        },
+        "xi": {
+            "pal": {"h": (32, 28, 32), "H": (16, 16, 24), "s": (240, 200, 160), "S": (208, 160, 120), "c": (40, 44, 64), "C": (24, 28, 44), "p": (40, 44, 64), "P": (24, 28, 44), "t": (200, 40, 40)},
+            "rows": {5: "..khhhhhhhhhhk..", 6: "..kHssssssssHk.."},
+        },
+        "putin": {
+            "pal": {"h": (224, 208, 176), "H": (184, 168, 136), "s": (248, 216, 192), "S": (216, 176, 152), "c": (40, 48, 96), "C": (24, 32, 72), "p": (40, 48, 96), "P": (24, 32, 72), "t": (200, 40, 40)},
+            "rows": {3: "..kHssssssssHk..", 4: "..kHssssssssHk..", 5: "..kssssssssssk.."},
+        },
+        "khamenei": {
+            "pal": {"h": (32, 32, 40), "H": (16, 16, 24), "s": (232, 200, 168), "S": (200, 160, 128), "c": (40, 40, 48), "C": (24, 24, 32), "p": (40, 40, 48), "P": (24, 24, 32)},
+            "rows": {0: "...kkkkkkkkkk...", 1: "..khhhhhhhhhhk..", 2: ".khhhhhhhhhhhhk.", 3: ".khhhhhhhhhhhhk.", 4: "..khhhhhhhhhhk..", 10: "...kbbbbbbbbbk..", 11: "....kbbbbbbbk...", 12: ".....kkbbbkk....", 13: "....kccccccck...", 14: "...kccccccccck..", 15: "..kscccccccccsk.", 18: "....kccccccck...", 19: "....kCCCCCCCk..."},
+        },
+        "zelensky": {
+            "pal": {"h": (72, 48, 40), "H": (48, 32, 24), "s": (232, 192, 160), "S": (200, 152, 120), "c": (96, 112, 72), "C": (64, 80, 48), "p": (56, 56, 64), "P": (40, 40, 48), "b": (72, 48, 40), "B": (48, 32, 24)},
+            "rows": {10: "...kbbssssbbk...", 11: "....kbbbbbbbk...", 13: "....kccccccck...", 14: "...kccccccccck.."},
+        },
+        "modi": {
+            "pal": {"h": (232, 232, 232), "H": (192, 192, 200), "s": (200, 152, 112), "S": (168, 120, 88), "c": (232, 144, 56), "C": (192, 104, 32), "p": (248, 248, 240), "P": (208, 208, 200)},
+            "rows": {10: "...kbbssssbbk...", 11: "....kbbbbbbbk...", 13: "....kcwwwwwck...", 14: "...kccwwwwwcck..", 15: "..kscwwwwwwwcsk.", 16: "..kkccwwwwwcckk."},
+        },
+        "starmer": {
+            "pal": {"h": (168, 168, 176), "H": (128, 128, 136), "s": (240, 208, 184), "S": (208, 168, 144), "c": (40, 48, 96), "C": (24, 32, 72), "p": (40, 48, 96), "P": (24, 32, 72), "t": (160, 40, 56)},
+            "rows": {7: "..kskeekskeeksk.", 8: "..kssesssssessk."},
+        },
+        "trader": {
+            "pal": {"h": (56, 150, 146), "H": (38, 92, 90), "s": (236, 196, 160), "S": (200, 152, 120), "c": (56, 150, 146), "C": (38, 92, 90), "p": (56, 56, 64), "P": (40, 40, 48), "t": (56, 150, 146), "w": (56, 150, 146)},
+            "rows": {5: "..khhssssssshhk.", 6: "..khsssssssshk..", 7: "..khsesssssehk..", 8: "..khsesssssehk..", 9: "..khsssssssshk..", 13: "....kccccccck...", 14: "...kccccccccck.."},
+        },
+        "politician": {"pal": {}, "rows": {}},
+    }
 
 
-@app.cell
-def _(ATLAS, FPS, MOVES, canvas, chrome, ease, np, save_scene):
-    fig4, ax4 = canvas(rect=(0.34, 0.18, 0.58, 0.56))
-    chrome(fig4, "WHAT IT COST BY LUNCH", "Tel Aviv priced the deadlock in a day", "Wednesday 28 October. Stocks, the shekel and bonds all sold off on a government that may take weeks to form.", "Source: Yahoo Finance for EIS and Brent; Reuters and Times of Israel for TA-35, shekel and bond yields, 28 Oct 2026. Atlas Research.")
-    labels4 = [m[0] for m in MOVES]
-    v4 = [m[1] for m in MOVES]
-    n4 = len(v4)
-    y4 = np.arange(n4)[::-1]
-    colors4 = [ATLAS["hot"] if (mv < 0 or "yield" in ml) else ATLAS["accent"] for ml, mv in MOVES]
-    bars4 = ax4.barh(y4, [0] * n4, height=0.62, color=colors4)
-    lo4, hi4 = min(v4 + [0]), max(v4 + [0])
-    ax4.set_xlim(lo4 * 1.5 - 1, hi4 * 1.5 + 1)
-    ax4.set_ylim(-0.7, n4 - 0.3)
-    ax4.set_xticks([])
-    ax4.set_yticks([])
-    ax4.axvline(0, color=ATLAS["muted"], linewidth=0.8)
-    tr4 = ax4.get_yaxis_transform()
-    for y4i, lab4 in zip(y4, labels4):
-        ax4.text(-0.015, y4i, lab4, color=ATLAS["ink"], fontsize=14, fontweight="bold", ha="right", va="center", family=ATLAS["font"], transform=tr4)
-    texts4 = [ax4.text(0, y4j, "", color=ATLAS["ink"], fontsize=14, fontweight="bold", va="center", family=ATLAS["font"]) for y4j in y4]
-    per_bar4 = int(FPS * 0.6)
-    hold4 = int(FPS * 3)
 
-    def scene4(frame):
-        for i in range(n4):
-            t = ease(min(1, max(0, (frame - i * per_bar4) / per_bar4)))
-            v = v4[i] * t
-            bars4[i].set_width(v)
-            unit = "bp" if "yield" in labels4[i] else "%"
-            texts4[i].set_x(v + 0.3 if v >= 0 else v - 0.3)
-            texts4[i].set_ha("left" if v >= 0 else "right")
-            texts4[i].set_text(f"{v:+.1f}{unit}" if t > 0 else "")
-        return list(bars4) + texts4
+    def npc_render(name, scale=1):
+        spec = NPCS[name]
+        pal = {**DEFAULT, **spec["pal"]}
+        rows = [spec["rows"].get(i, r) for i, r in enumerate(BASE)]
+        im = Image.new("RGBA", (16 * scale, len(rows) * scale), (0, 0, 0, 0))
+        px = im.load()
+        for j, row in enumerate(rows):
+            for i, ch in enumerate(row):
+                if ch == ".":
+                    continue
+                col = pal[ch] + (255,)
+                for dy in range(scale):
+                    for dx in range(scale):
+                        px[i * scale + dx, j * scale + dy] = col
+        return im
 
-    scene4_path = save_scene(fig4, scene4, n4 * per_bar4 + hold4)
-    return (scene4_path,)
+    return DOLLAR, LH, LW, P, Scene, backdrop, dialogue, npc_render, write_mp4
 
 
-@app.cell
-def _(ATLAS, FPS, canvas, chrome, ease, save_scene):
-    fig5, ax5 = canvas(rect=(0.08, 0.14, 0.86, 0.64))
-    chrome(fig5, "WHAT HAPPENS NEXT", "Everyone is waiting for November 3", "The chain from a Knesset deadlock to the price of oil, in the order it will happen.", "Source: Iran International, Al Jazeera, CBS, 27 to 28 Oct 2026; Polymarket. Atlas Research.")
-    ax5.set_xlim(0, 1)
-    ax5.set_ylim(0, 1)
-    ax5.set_xticks([])
-    ax5.set_yticks([])
-    STEPS = [
-        ("1", "Results reach Herzog 4 Nov, Knesset sworn in 10 Nov. Herzog picks who tries first,\nthen 42 days of talks. Eisenkot refuses to serve under Netanyahu."),
-        ("2", "US midterms 3 Nov. Trump told Israelis to re-elect Netanyahu\nto \"finish the job\" in Iran."),
-        ("3", "Netanyahu, Wednesday: a rare chance, with Trump,\n\"to remove the existential threat of Iran once and for all.\""),
-        ("4", "US media: the military is ready to strike within days if ordered.\nIn Tehran, people are forming groups to warn each other of jets."),
-        ("5", "Hormuz is already closed 241 days. Brent is $111.\nA second round puts every number in this video back on the board."),
+@app.cell(hide_code=True)
+def _(LH, LW, P, Scene, backdrop, dialogue, npc_render, write_mp4, json, pd, tempfile, urllib):
+
+    NET = "20006732765674855733524007935991362439352594042415161039767275461950712817548"
+    EIS = "52487256270918227930942830546248720603566203568229607048093730748840489555808"
+    IL = "Asia/Jerusalem"
+
+    def hist(tok, interval, fidelity):
+        req = urllib.request.Request(f"https://clob.polymarket.com/prices-history?market={tok}&interval={interval}&fidelity={fidelity}", headers={"User-Agent": "Mozilla/5.0"})
+        h = json.loads(urllib.request.urlopen(req).read())["history"]
+        s = pd.Series([p["p"] for p in h], index=pd.to_datetime([p["t"] for p in h], unit="s", utc=True)).sort_index()
+        return s[~s.index.duplicated()]
+
+    year = pd.DataFrame({"net": hist(NET, "max", 1440), "eis": hist(EIS, "max", 1440)}).ffill().dropna()
+    year = year[year.index <= pd.Timestamp("2026-10-28", tz="UTC")]
+    night = pd.DataFrame({"net": hist(NET, "1w", 60), "eis": hist(EIS, "1w", 60)}).ffill().dropna()
+    night = night[(night.index >= pd.Timestamp("2026-10-27 14:00", tz="UTC")) & (night.index <= pd.Timestamp("2026-10-28 08:00", tz="UTC"))]
+    night.index = night.index.tz_convert(IL)
+
+    BG_TOWN = backdrop("bg-knesset2")
+    BG_FIELD = backdrop("battle-field")
+    BG_EXCH = backdrop("bg-exchange")
+    BG_LAWN = backdrop("bg-lawn")
+    SP = {n: npc_render(n) for n in ("trader", "netanyahu", "eisenkot", "trump")}
+    SP3 = {n: npc_render(n, 3) for n in ("netanyahu", "eisenkot")}
+
+    YEAR_EVENTS = [
+        (pd.Timestamp("2026-02-28", tz="UTC"), ["NETANYAHU used STRIKE IRAN!", "Hormuz closes. Odds jump to 62%."]),
+        (pd.Timestamp("2026-06-17", tz="UTC"), ["The war drags on. Hormuz stays shut.", "NETANYAHU's odds are falling..."]),
+        (pd.Timestamp("2026-07-27", tz="UTC"), ["EISENKOT overtakes!", "First time ahead in the market."]),
+        (pd.Timestamp("2026-10-25", tz="UTC"), ["Two days out:", "NETANYAHU 27%. EISENKOT 50%."]),
     ]
-    rows5 = []
-    for k5, (num5, txt5) in enumerate(STEPS):
-        y5 = 0.92 - k5 * 0.19
-        circ = ax5.text(0.02, y5, num5, color=ATLAS["bg"], fontsize=13, fontweight="bold", ha="center", va="center", family=ATLAS["font"], bbox=dict(boxstyle="circle,pad=0.35", fc=ATLAS["accent"], ec="none"), alpha=0)
-        body = ax5.text(0.07, y5, txt5, color=ATLAS["ink"], fontsize=13.5, va="center", family=ATLAS["font"], linespacing=1.3, alpha=0)
-        rows5.append((circ, body))
-    per5 = int(FPS * 1.6)
-    hold5 = int(FPS * 4)
+    NIGHT_EVENTS = [
+        (pd.Timestamp("2026-10-27 22:00", tz=IL), ["Polls close. Exit polls say: TIE.", "Opposition declares victory on air."]),
+        (pd.Timestamp("2026-10-28 01:00", tz=IL), ["Half the vote is counted.", "NETANYAHU's bloc is at 55."]),
+        (pd.Timestamp("2026-10-28 05:00", tz=IL), ["NETANYAHU used COUNT THE VOTES!", "It's super effective."]),
+    ]
+    BLOCS = [("NETANYAHU BLOC", 53, "pink", "Likud, UTJ, Otzma, Shas, RZP"), ("OPPOSITION", 48, "teal", "Yashar, Together, Democrats, more"), ("ARAB PARTIES", 19, "yellow", "Joint List, Ra'am. A record.")]
+    COST = [("ISRAEL ETF", "-4.9%", 0.49), ("TEL AVIV 35", "-2.3%", 0.23), ("SHEKEL vs USD", "-2.2%", 0.22), ("10-YEAR YIELD", "+8 bp", 0.3), ("BRENT CRUDE", "+1.3%", 0.13)]
+    NEXT = [
+        ["Results reach HERZOG on 4 Nov.", "One leader gets 28 days to form a coalition."],
+        ["US midterms on 3 Nov.", "TRUMP: re-elect NETANYAHU to finish the job."],
+        ["NETANYAHU: a rare chance, with TRUMP,", "to remove the Iran threat once and for all."],
+        ["US officials told Gulf allies:", "strikes possible as early as 4 Nov."],
+        ["Hormuz: closed 245 days. Brent $113.", "Round two puts it all back on the board."],
+    ]
 
-    def scene5(frame):
-        for k5b, (c5, b5) in enumerate(rows5):
-            a5 = ease(min(1, max(0, (frame - k5b * per5) / (per5 * 0.5))))
-            c5.set_alpha(a5)
-            b5.set_alpha(a5)
-        return [t5 for r5 in rows5 for t5 in r5]
+    def clock(sc, t, kicker=None):
+        sc.panel(228, 8, 312, 26)
+        sc.text(236, 13, t, shadow=False)
+        if kicker:
+            sc.text(140, 13, kicker, color="teal")
 
-    scene5_path = save_scene(fig5, scene5, len(STEPS) * per5 + hold5)
-    return (scene5_path,)
+    def battle(net, eis, lines, prog, t, kicker):
+        sc = Scene(BG_FIELD)
+        sc.platform(248, 84, 46, 9)
+        sc.platform(80, 138, 50, 9)
+        e = SP3["netanyahu"]; sc.sprite(e, 248 - e.width // 2, 84 - e.height + 8)
+        p = SP3["eisenkot"]; sc.sprite(p, 80 - p.width // 2, 138 - p.height + 8)
+        sc.status(8, 10, "NETANYAHU", net, "pink")
+        sc.status(190, 104, "EISENKOT", eis, "teal")
+        clock(sc, t, kicker)
+        dialogue(sc, lines, prog)
+        return sc.frame()
+
+    frames = []
+    prev = year.index[0]
+    for ts, lines in YEAR_EVENTS:
+        seg = year[(year.index > prev) & (year.index <= ts)].iloc[::8]
+        for idx, row in seg.iterrows():
+            frames.append(battle(row["net"], row["eis"], ["", ""], 0, idx.strftime("%b %Y"), "ONE YEAR"))
+        last = year[year.index <= ts].iloc[-1]
+        for k in range(1, 25):
+            frames.append(battle(last["net"], last["eis"], lines, k / 24, ts.strftime("%b %Y"), "ONE YEAR"))
+        for k in range(10):
+            frames.append(battle(last["net"], last["eis"], lines, 1.0, ts.strftime("%b %Y"), "ONE YEAR"))
+        prev = ts
+
+    def town(net, eis, lines, prog, t):
+        sc = Scene(BG_TOWN)
+        sc.sprite(SP["netanyahu"], 150, 92)
+        sc.sprite(SP["eisenkot"], 176, 96)
+        sc.status(8, 8, "NETANYAHU", net, "pink")
+        sc.status(8, 40, "EISENKOT", eis, "teal")
+        clock(sc, t, "ELECTION NIGHT")
+        dialogue(sc, lines, prog)
+        return sc.frame()
+
+    prev = night.index[0]
+    idx_poster = 0
+    for ts, lines in NIGHT_EVENTS:
+        seg = night[(night.index > prev) & (night.index <= ts)]
+        fn = town if ts.hour != 5 else battle
+        for idx, row in seg.iterrows():
+            for _ in range(2):
+                frames.append(fn(row["net"], row["eis"], ["", ""], 0, idx.strftime("%a %H:%M")) if fn is town else fn(row["net"], row["eis"], ["", ""], 0, idx.strftime("%a %H:%M"), "ELECTION NIGHT"))
+        last = night[night.index <= ts].iloc[-1]
+        for k in range(1, 25):
+            frames.append(fn(last["net"], last["eis"], lines, k / 24, ts.strftime("%a %H:%M")) if fn is town else fn(last["net"], last["eis"], lines, k / 24, ts.strftime("%a %H:%M"), "ELECTION NIGHT"))
+        for k in range(10):
+            frames.append(fn(last["net"], last["eis"], lines, 1.0, ts.strftime("%a %H:%M")) if fn is town else fn(last["net"], last["eis"], lines, 1.0, ts.strftime("%a %H:%M"), "ELECTION NIGHT"))
+        if ts.hour == 22:
+            idx_poster = len(frames) - 1
+        prev = ts
+
+    def count(n_rows, prog, done):
+        sc = Scene(BG_TOWN)
+        sc.panel(8, 6, 312, 130)
+        sc.text(16, 11, "THE COUNT", color="teal"); sc.text(136, 11, "120 seats. 61 to govern.", color=(120, 120, 128), shadow=False)
+        for i, (name, seats, col, who) in enumerate(BLOCS[:n_rows]):
+            y = 30 + i * 32
+            t = prog if i == n_rows - 1 else 1
+            sc.text(16, y - 4, name)
+            sc.text(16, y + 9, who, color=(120, 120, 128), shadow=False)
+            sc.hp(150, y + 2, seats / 120 * t, width=110, color=col)
+            sc.text(276, y - 2, f"{int(round(seats * t))}", color=col)
+        mx = 162 + int(110 * 61 / 120)
+        for yy in range(24, 126, 3):
+            sc.d.point((mx, yy), fill=P["panel_dark"])
+        sc.text(mx + 3, 112, "61")
+        dialogue(sc, ["Likud lost five seats and still won.", "Nobody reaches 61."], 1.0 if done else 0)
+        return sc.frame()
+
+    for i in range(1, len(BLOCS) + 1):
+        for k in range(1, 13):
+            frames.append(count(i, k / 12, False))
+    for k in range(36):
+        frames.append(count(len(BLOCS), 1, True))
+    idx_count = len(frames) - 1
+
+    def cost(n_hits, flash):
+        sc = Scene(BG_EXCH)
+        sc.sprite(SP["trader"], 150, 110)
+        if flash:
+            sc.d.rectangle([0, 0, LW, LH], fill=(255, 255, 255))
+        sc.panel(8, 8, 224, 96)
+        sc.text(16, 13, "WHAT IT COST BY LUNCH", color="teal")
+        for i, (name, dmg, frac) in enumerate(COST[:n_hits]):
+            y = 28 + i * 13
+            sc.text(16, y - 2, name)
+            sc.hp(126, y + 1, 1 - frac, width=30, color="pink")
+            sc.text(178, y - 2, dmg, color="pink" if dmg.startswith("-") else (184, 120, 24))
+        clock(sc, "Wed 28 Oct")
+        dialogue(sc, ["TEL AVIV took the hit before a single", "coalition meeting."], 1.0 if n_hits >= len(COST) else 0)
+        return sc.frame()
+
+    for i in range(1, len(COST) + 1):
+        frames.append(cost(i, True))
+        for k in range(9):
+            frames.append(cost(i, False))
+    for k in range(20):
+        frames.append(cost(len(COST), False))
+    idx_cost = len(frames) - 1
+
+    def nxt(step, prog):
+        sc = Scene(BG_LAWN)
+        sc.sprite(SP["trump"], 148, 118)
+        sc.sprite(SP["netanyahu"], 172, 120)
+        sc.panel(8, 8, 226, 26)
+        sc.text(16, 13, f"WHAT HAPPENS NEXT  {step + 1} of 5", color="teal")
+        dialogue(sc, NEXT[step], prog)
+        return sc.frame()
+
+    for st in range(len(NEXT)):
+        for k in range(1, 25):
+            frames.append(nxt(st, k / 24))
+        for k in range(12):
+            frames.append(nxt(st, 1.0))
 
 
-@app.cell
-def _(concat, mo, read, scene1_path, scene2_path, scene3_path, scene4_path, scene5_path):
-    full_mp4 = concat([scene1_path, scene2_path, scene3_path, scene4_path, scene5_path])
+    out_path = write_mp4(frames, tempfile.mktemp(suffix=".mp4"))
+    return frames, out_path
+
+
+@app.cell(hide_code=True)
+def _(mo, out_path):
+    with open(out_path, "rb") as _fh:
+        mp4 = _fh.read()
     mo.vstack([
-        mo.video(full_mp4, controls=True, autoplay=True, loop=True, muted=True),
-        mo.hstack([
-            mo.download(data=full_mp4, filename="israel-voted-nobody-won.mp4", mimetype="video/mp4", label="Download full animation"),
-            mo.download(data=read(scene1_path), filename="israel-1-the-bet.mp4", mimetype="video/mp4", label="Scene 1"),
-            mo.download(data=read(scene2_path), filename="israel-2-election-night.mp4", mimetype="video/mp4", label="Scene 2"),
-            mo.download(data=read(scene3_path), filename="israel-3-the-count.mp4", mimetype="video/mp4", label="Scene 3"),
-            mo.download(data=read(scene4_path), filename="israel-4-what-it-cost.mp4", mimetype="video/mp4", label="Scene 4"),
-            mo.download(data=read(scene5_path), filename="israel-5-what-next.mp4", mimetype="video/mp4", label="Scene 5"),
-        ]),
+        mo.video(mp4, controls=True, autoplay=True, loop=True, muted=True),
+        mo.download(data=mp4, filename="israel-voted-nobody-won.mp4", mimetype="video/mp4", label="Download animation"),
     ])
-    return (full_mp4,)
+    return
 
 
 if __name__ == "__main__":
