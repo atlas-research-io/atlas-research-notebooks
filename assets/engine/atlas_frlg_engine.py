@@ -152,7 +152,8 @@ class Scene:
         for k, lab in enumerate(xlabels):
             xx = x0 + int(round((x1 - x0) * k / max(1, len(xlabels) - 1)))
             self.d.line([xx, y1, xx, y1 + 2], fill=c)
-            self.text(xx - 3 * len(lab), y1 + 4, lab, shadow=False)
+            tx = xx if k == 0 else (xx - 6 * len(lab) if k == len(xlabels) - 1 else xx - 3 * len(lab))
+            self.text(tx, y1 + 4, lab, shadow=False)
 
     def line(self, values, box, color="teal", lo=None, hi=None, progress=1.0, thick=2):
         x0, y0, x1, y1 = box
