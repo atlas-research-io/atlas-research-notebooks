@@ -1,0 +1,1 @@
+PokemonClassic.ttf by TheLouster115, licensed CC BY-SA 3.0 (https://www.dafont.com/pokemon-classic.font). Used in-frame by the Atlas pixel engine. Redistributed here under the same license with attribution.
