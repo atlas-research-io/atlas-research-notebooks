@@ -1,0 +1,1 @@
+Backdrops are 320x180 pixel scenes generated for Atlas pieces and snapped to the pixel grid. npc.py holds the hand-drawn overworld sprites of the recurring characters. Piece notebooks fetch these at render time.
