@@ -227,6 +227,16 @@ def dialogue(sc, lines, progress=1.0):
 
 
 
+def write_mp4(frames, path, fps=24, hold=2):
+    tmp = tempfile.mkdtemp()
+    k = 0
+    for fr in frames:
+        for _ in range(hold):
+            fr.save(os.path.join(tmp, f"{k:05d}.png"))
+            k += 1
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", os.path.join(tmp, "%05d.png"), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "faststart", path], check=True)
+    return path
+
 _npc = {}
 exec(open(fetch("assets/npc.py")).read(), _npc)
 NPCS = _npc["NPCS"]
